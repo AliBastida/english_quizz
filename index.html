@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ATC English Quiz — v2</title>
+  <meta name="description" content="ATC English training quiz. Wrong answer → restart with reshuffled questions." />
+  <style>
+    :root{
+      --bg:#0f172a; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --danger:#ef4444;
+    }
+    html,body{height:100%}
+    body{margin:0; font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto; background:radial-gradient(1200px 800px at 70% -10%, #1f2937 0%, var(--bg) 40%, #0b1022 100%); color:var(--text); display:flex; align-items:center; justify-content:center; padding:24px;}
+    .card{width:min(1000px,100%); background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); backdrop-filter: blur(8px); border-radius:16px; padding:24px; box-shadow:0 20px 60px rgba(0,0,0,.35);}
+    h1{margin:0 0 8px 0; font-weight:700}
+    .muted{color:var(--muted); font-size:14px}
+    .progress{height:10px; background:#0b1224; border-radius:999px; overflow:hidden; border:1px solid rgba(255,255,255,.08)}
+    .progress>div{height:100%; width:0%; background:linear-gradient(90deg, #60a5fa, #34d399, #fbbf24); transition:width .35s ease}
+    .panel{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:14px; padding:18px;}
+    .q{font-size:18px; line-height:1.45}
+    .options{display:grid; gap:12px; margin-top:16px}
+    .btn{appearance:none; border:1px solid rgba(255,255,255,.08); background:#0b1224; color:var(--text); padding:14px 16px; border-radius:12px; cursor:pointer; font-size:16px; text-align:left; transition: transform .06s ease, border-color .2s, background .2s, box-shadow .2s}
+    .btn:hover{transform:translateY(-1px); border-color:rgba(255,255,255,.18)}
+    .btn:active{transform:translateY(0)}
+    .btn.correct{background:linear-gradient(180deg, rgba(34,197,94,.15), rgba(34,197,94,.05)); border-color:rgba(34,197,94,.5); box-shadow:0 0 0 2px rgba(34,197,94,.25) inset}
+    .btn.wrong{background:linear-gradient(180deg, rgba(239,68,68,.15), rgba(239,68,68,.05)); border-color:rgba(239,68,68,.5); box-shadow:0 0 0 2px rgba(239,68,68,.25) inset}
+    .toolbar{display:flex; justify-content:space-between; align-items:center; gap:12px; margin:12px 0 8px 0}
+    .pill{font-size:12px; color:#cbd5e1; background:#0b1224; border:1px solid rgba(255,255,255,.08); padding:6px 10px; border-radius:999px}
+    .hidden{display:none}
+    .fade-enter{animation:fade .35s ease}
+    @keyframes fade{from{opacity:0; transform: translateY(6px)} to{opacity:1; transform:none}}
+    .big{font-size:64px; font-weight:800;}
+    .kbd{font-family:ui-monospace,Menlo,Monaco,Consolas,monospace; font-size:12px; padding:2px 6px; border:1px solid rgba(255,255,255,.1); border-radius:6px; background:#0b1224}
+    .footer{margin-top:8px; color:var(--muted); font-size:12px}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <header>
+      <h1>ATC English Quiz — v2</h1>
+      <div class="muted">Wrong answer → <strong>restart</strong> + full <strong>reshuffle</strong>. Keyboard: <span class="kbd">1</span><span class="kbd">2</span><span class="kbd">3</span></div>
+    </header>
+
+    <section id="start">
+      <div class="panel" style="margin-top:16px">
+        <p>Practica traducción y fraseología ATC (EN↔ES). El banco de preguntas incluye las del PDF original y las nuevas (71–82, 108–120).</p>
+        <button id="btnStart" class="btn" style="text-align:center; width:240px">Start Quiz ▶</button>
+      </div>
+    </section>
+
+    <section id="game" class="hidden">
+      <div class="toolbar">
+        <div class="pill" id="status">Question 1/10</div>
+        <div class="pill" id="score">Score 0</div>
+      </div>
+      <div class="progress" aria-hidden="true"><div id="bar"></div></div>
+      <div id="qa" class="panel fade-enter">
+        <div id="prompt" class="q"></div>
+        <div id="options" class="options" role="listbox" aria-label="Options"></div>
+      </div>
+    </section>
+
+    <section id="finish" class="hidden" style="min-height:140px; text-align:center">
+      <div class="fade-enter">
+        <div id="finalIcon" class="big">🏁</div>
+        <h2 id="finalTitle">Great job!</h2>
+        <p id="finalMsg" class="muted">All answers were correct.</p>
+        <div style="display:flex; align-items:center; justify-content:center; gap:10px; margin-top:12px">
+          <button id="btnRetry" class="btn">Retry ▷</button>
+          <button id="btnShuffle" class="btn">Retry (reshuffle) 🔀</button>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer">Puedes editar el banco en el array <strong>QUESTIONS</strong>. </p>
+  </main>
+
+  <script>
+    // Existing questions from v1 (subset of the PDF)
+    const BASE_QUESTIONS = [
+      {"prompt":"\"Push-back completed, confirm brakes set.\" → Elige la traducción correcta (ES).","options":["Empuje desde atrás completo, confirme frenos listos.","Maniobra de empuje completada, confirme frenos en situación.","Retroceso remolcado completado, confirme frenos puestos."],"correctIndex":2},
+      {"prompt":"\"Frozen ruts and ridges in taxiway F.\" → Elige la traducción correcta (ES).","options":["Grietas heladas y montículos en calle de rodaje F.","Pozos congelados y estrías en calle de rodaje F.","Surcos y estrías engelados en calle de rodaje F."],"correctIndex":2},
+      {"prompt":"\"Will shortly lose identification due to radar coverage.\" → Elige la traducción correcta (ES).","options":["La identificación se perderá brevemente debido a la cobertura de radar.","La identificación se perderá pronto debido a la cobertura de radar.","Pérdidas ocasionales de identificación debido a la cobertura de radar."],"correctIndex":1},
+      {"prompt":"\"Numerous flocks of large seagulls at four o'clock four miles last reported altitude one thousand six hundred feet.\" → Elige la traducción correcta (ES).","options":["Numerosas bandadas de estorninos grandes notificadas por última vez a las cuatro en punto a cuatro millas, altitud mil seiscientos pies.","Numerosas bandadas de gaviotas a las cuatro en punto cuatro millas, última altitud notificada mil seiscientos pies.","Numerosos bancos de cúmulos de gran extensión a las cuatro en punto notificadas por última vez a cuatro millas, altitud mil seiscientos pies."],"correctIndex":1},
+      {"prompt":"\"Unable to issue Titan 3C arrival due DME out of service.\" → Elige la traducción correcta (ES).","options":["Imposible conceder llegada Titan 3C debido a que el DME está fuera de servicio.","Imposible confirmar ruta de llegada Titan 3C debido a que el DME está fuera de servicio.","Imposible transmitir instrucciones de llegada Titan 3C debido a que el DME está fuera de servicio."],"correctIndex":2},
+      {"prompt":"\"AP 268 next report at Edmol.\" → Elige la traducción correcta (ES).","options":["AP 268 notifique después a Edmol.","AP 268 próximo informe a Edmol.","AP 268 próximo informe en Edmol."],"correctIndex":2},
+      {"prompt":"\"Check decision height.\" → Elige la traducción correcta (ES).","options":["Compruebe altitud decidida.","Revise su altitud de decisión.","Verifique su altura de decisión."],"correctIndex":2},
+      {"prompt":"\"Make straight-in approach, runway one seven left, surface wind 080 degrees 4 knots, temperature seven, QNH 1022.\" → Elige la traducción correcta (ES).","options":["Efectúe aproximación directa, pista 17 izquierda, viento en superficie ochenta grados a cuatro nudos, temperatura +7º, QNH uno cero dos dos.","Efectúe aproximación directa, pista 17 izquierda, viento en superficie ochenta grados a cuatro nudos, temperatura +7º, QNH uno cero dos dos.","Realice aproximación directa, pista 17VL, viento de superficie ochenta grados con cuatro nudos, temperatura +7º, QNH uno cero dos dos."],"correctIndex":0},
+      {"prompt":"\"Extend downwind.\" → Elige la traducción correcta (ES).","options":["Prolongue a barlovento.","Prolongue a sotavento.","Prolongue a favor del viento."],"correctIndex":1},
+      {"prompt":"\"MD-90 in sight.\" → Elige la traducción correcta (ES).","options":["MD-90 a la vista.","MD-90 en circuito interior.","MD-90 en aproximación."],"correctIndex":0},
+      {"prompt":"\"Expect further clearance at 1100.\" → Elige la traducción correcta (ES).","options":["Espere hasta tener autorización a las 1100.","Estimada renovación de la autorización a las 1100.","Prevea nueva autorización a las 1100."],"correctIndex":2},
+      {"prompt":"\"Over threshold.\" → Elige la traducción correcta (ES).","options":["Sobre el umbral.","Sobre luces.","Sobre punto de espera."],"correctIndex":0},
+      {"prompt":"\"Station calling Abingdon Tower you are unreadable.\" → Elige la traducción correcta (ES).","options":["Estación llamando a Abingdon Torre, no es posible llegar a usted.","Estación llamando a la torre de Abingdon, está usted en zona de sombra.","Estación que llama a Abingdon Torre, no se le entiende."],"correctIndex":2},
+      {"prompt":"\"Line up runway 06.\" → Elige la traducción correcta (ES).","options":["Entre y mantenga pista 06.","Espere para entrar en pista 06.","Situése en posición para entrar en pista 06."],"correctIndex":0},
+      {"prompt":"\"Air-taxi to apron South, caution loose debris.\" → Elige la traducción correcta (ES).","options":["Efectúe rodaje aéreo hasta zona de estacionamiento sur, precaución detritos libres.","Rodaje aéreo a zona de estacionamiento sur, precaución materiales sueltos.","Rodaje aéreo a zona de estacionamiento sur, precaución restos de escombros."],"correctIndex":1},
+      {"prompt":"\"Unable to comply.\" → Elige la traducción correcta (ES).","options":["Confirmación no disponible.","Imposible confirmar.","Imposible cumplir."],"correctIndex":2},
+      {"prompt":"\"Resume normal rate of descent.\" → Elige la traducción correcta (ES).","options":["Cambie a régimen normal de descenso.","Reanude velocidad vertical normal de descenso.","Siga en velocidad normal de descenso."],"correctIndex":1},
+      {"prompt":"\"Request straight-in to RWY.\" → Elige la traducción correcta (ES).","options":["Efectúe aproximación directa hacia RWY.","Establezca rumbo directo a RWY.","Solicito aproximación directa hasta RWY."],"correctIndex":2},
+      {"prompt":"\"Report established on glide path.\" → Elige la traducción correcta (ES).","options":["Notificación comunicada sobre trayectoria de planeo.","Notificación establecida sobre trayectoria de planeo.","Notifique establecido sobre trayectoria de planeo."],"correctIndex":2},
+      {"prompt":"\"Clear conflict, returning to assigned altitude of FL310.\" → Elige la traducción correcta (ES).","options":["Conflicto cerrado, regresando a altitud asignada de FL 310.","Conflicto superado, volviendo a altura designada de FL 310.","Conflicto terminado, regreso a altitud asignada de FL 310."],"correctIndex":2},
+      {"prompt":"\"Caution jet blast.\" → Elige la traducción correcta (ES).","options":["Precaución, estela.","Precaución, estela turbulenta.","Precaución, chorro de reactor."],"correctIndex":2},
+      {"prompt":"\"AP 128 descend to FL 160, expedite descent until passing FL 220.\" → Elige la traducción correcta (ES).","options":["AP 128 descienda a FL 160, acelere descenso hasta pasar FL 220.","AP 128 descienda a FL 160, descenso expedito hasta pasar nivel FL 220.","AP 128 descienda a FL 160, todo despejado hasta pasar por nivel FL 220."],"correctIndex":1},
+      {"prompt":"\"Precision approach not available due to radar failure.\" → Elige la traducción correcta (ES).","options":["Aproximación de precisión no disponible debido fallo de radar.","Aproximación de precisión pospuesta debido a fallo de radar.","Precisión no disponible para la aproximación por fallo de radar."],"correctIndex":0},
+      {"prompt":"\"Give way to A-240 on your left.\" → Elige la traducción correcta (ES).","options":["Ceda paso a A-240 a su izquierda.","Deje la frecuencia libre a A-240 a su izquierda.","Transmita posición a A-240 a su izquierda."],"correctIndex":0},
+      {"prompt":"\"AP 543 contact ground on 124.825.\" → Elige la traducción correcta (ES).","options":["AP 543 comunique llegada en 124.825.","AP 543 contacte con tierra en 124.825.","AP 543 llame a control de superficie en 124.825."],"correctIndex":1},
+      {"prompt":"\"Atención todas las aeronaves, vaciado rápido de combustible por DC-10 terminado.\" → Elige la traducción correcta (EN).","options":["Attention all aircraft, DC-10 tank vacating finished.","Attention all aircraft, fuel dumping by DC-10 terminated.","Attention all aircraft, speed emptying by DC-10 ended."],"correctIndex":1},
+      {"prompt":"\"La identificación se perderá pronto...\" → Elige la traducción correcta (EN).","options":["Identification will be lost soon.","Will shortly lose identification.","You will promptly lose identification."],"correctIndex":0},
+      {"prompt":"\"¿Está usted listo para retroceso remolcado?\" → Elige la traducción correcta (EN).","options":["Are you ready for pushback?","Are you ready for trackback?","Are you ready to pushback?"],"correctIndex":0},
+      {"prompt":"\"G-CD acelere rodaje, tránsito en final pista 14.\" → Elige la traducción correcta (EN).","options":["G-CD expedite taxi, traffic on final runway 14.","G-CD hurry taxi, traffic on end runway 24 final.","G-CD rush taxiing, traffic due runway 24 final."],"correctIndex":0},
+      {"prompt":"\"Responda bajo.\" → Elige la traducción correcta (EN).","options":["Acknowledge lowly.","Reply down.","Squawk low."],"correctIndex":2},
+      {"prompt":"\"G-CD notifique listo para salida.\" → Elige la traducción correcta (EN).","options":["G-CD notify when ready for take-off.","G-CD report when ready for take-off.","G-CD report when ready for departure."],"correctIndex":2},
+      {"prompt":"\"AP 345 continue aproximación, viento 230 grados 14 nudos.\" → Elige la traducción correcta (EN).","options":["AP 345 continue approach, wind 230 degrees 14 knots.","AP 345 maintain approach, wind 230 grades 14 knots.","AP 345 resume approach, wind 230 gradients 14 knots."],"correctIndex":0},
+      {"prompt":"\"Sin limitaciones de velocidad por ATC.\" → Elige la traducción correcta (EN).","options":["No ATC speed restrictions.","No speed limit by ATC.","No speed limitation from ATC."],"correctIndex":0},
+      {"prompt":"\"Muy a la izquierda de la derrota.\" → Elige la traducción correcta (EN).","options":["Far left of course.","Too left or trail.","Well left of track."],"correctIndex":2},
+      {"prompt":"\"Entre y mantenga. Esté listo para salida inmediata.\" → Elige la traducción correcta (EN).","options":["Enter and hold. Ready for immediate takeoff.","Hold and maintain. Ready for expedite departure.","Line up. Be ready for immediate departure."],"correctIndex":2},
+      {"prompt":"\"Compruebe reglaje altímetro y confirme nivel.\" → Elige la traducción correcta (EN).","options":["Check altimeter setting and confirm level.","Check altimeter setting and acknowledge level.","Test altimeter ruling and report level."],"correctIndex":0},
+      {"prompt":"\"Notifique dejando 7000 pies.\" → Elige la traducción correcta (EN).","options":["Report departing 7000 feet.","Report leaving 7000 feet.","Report passing 7000 feet."],"correctIndex":1},
+      {"prompt":"\"En la trayectoria de planeo a 6 millas del punto de toma de contacto.\" → Elige la traducción correcta (EN).","options":["at glide path 6 miles to touch point.","in gliding path 6 miles to touchdown.","on glide path 6 miles from touchdown."],"correctIndex":2},
+      {"prompt":"\"Confirme frenos sueltos.\" → Elige la traducción correcta (EN).","options":["Confirm brakes dislodged.","Confirm brakes loose.","Confirm brakes released."],"correctIndex":2},
+      {"prompt":"\"No acuse recibo de instrucciones posteriores.\" → Elige la traducción correcta (EN).","options":["Do not acknowledge further instructions.","Do not confirm latter instructions.","No acknowledge of further instructions."],"correctIndex":0},
+      {"prompt":"\"RVSM negativa debido a turbulencia.\" → Elige la traducción correcta (EN).","options":["Negative RVSM due turbulence.","RVSM unserviceable due turbulence.","Unable RVSM due turbulence."],"correctIndex":2},
+      {"prompt":"\"Espero cerca.\" → Elige la traducción correcta (EN).","options":["Holding by.","Holding close.","Holding short."],"correctIndex":2},
+      {"prompt":"\"Solicito transferencia control de Westjet 562.\" → Elige la traducción correcta (EN).","options":["Request conveyance of Westjet 562.","Request release of Westjet 562.","Request transfer of Westjet 562."],"correctIndex":2},
+      {"prompt":"\"Solicitud de aprobación Skyhawk 8RC salida prevista de AROSO a las seis doce.\" → Elige la traducción correcta (EN).","options":["Approval request Skyhawk 8RC estimated departure from AROSO at six twelve.","Request approval Skyhawk 8RC estimated departure from AROSO at six twelve.","Request approval Skyhawk 8RC scheduled departure from AROSO at six twelve."],"correctIndex":1},
+      {"prompt":"\"Haga todos los virajes a régimen mitad, ejecute instrucciones tan pronto las reciba.\" → Elige la traducción correcta (EN).","options":["All turns must be half rate, execute instruction straight after reception.","Execute all turns rate half, comply with instructions on the spot.","Make all turns rate half, execute instructions immediately upon receipt."],"correctIndex":2},
+      {"prompt":"\"Precaución, estela turbulenta.\" → Elige la traducción correcta (EN).","options":["Caution, backwash turbulence.","Caution, turbulent wash.","Caution, wake turbulence."],"correctIndex":2},
+      {"prompt":"\"Autorizado a aproximación ILS pista 04 derecha.\" → Elige la traducción correcta (EN).","options":["Cleared for ILS approach runway 04 right.","ILS approach to runway 04 right cleared.","ILS approach cleared for runway 04 right."],"correctIndex":0},
+      {"prompt":"\"Cruce pista 02 y notifique pista libre.\" → Elige la traducción correcta (EN).","options":["Cross runway 02 report cleared.","Cross runway 02 report vacated.","Crossing runway 02 and report clear."],"correctIndex":1},
+      {"prompt":"\"Verifique si está el tren desplegado y afianzado.\" → Elige la traducción correcta (EN).","options":["Check gear down and locked.","Check landing gear out and set.","Check the gear out and deployed."],"correctIndex":0},
+      {"prompt":"\"Precaución, obras lado este de la calle de rodaje bravo.\" → Elige la traducción correcta (EN).","options":["Caution maintenance underway east side of taxiway bravo.","Caution work in progress east of taxiway bravo.","Caution works afoot east side of taxiway bravo."],"correctIndex":1}
+    ];
+
+    // New questions 71–82, 108–120 from the user (with correct answers)
+    const EXTRA_QUESTIONS = [
+      // 71
+      {"prompt":"\"Cleared ILS approach runway 27.\" → Elige la traducción correcta (ES).","options":["Autorizado a ILS a la pista 27.","Autorizado aproximación ILS pista 21.","ILS a la pista 27 en uso"],"correctIndex":1},
+      // 72
+      {"prompt":"\"Flight 789, maintain mach 0.80 or greater until Waypoint Delta.\" → Elige la traducción correcta (ES).","options":["Vuelo 789, mantenga velocidad de mach 0.80 o inferior hasta Delta.","Vuelo 789, mantenga mach 0.80 o superior hasta Delta.","Vuelo 789, mantenga una velocidad constante de mach 0.80 o más después que llegue al Punto de Referencia Delta."],"correctIndex":1},
+      // 73
+      {"prompt":"\"Braking action reported by Boeing 737 at time 14:45 poor.\" → Elige la traducción correcta (ES).","options":["Acción de frenado de Boeing 737 a las 14:45 moderada.","Eficacia de frenado notificada por Boeing 737 a las 14:45 escasa.","Freno reportado por Boeing 737 a las 14:45 insuficiente."],"correctIndex":1},
+      // 74
+      {"prompt":"\"Taxi straight ahead.\" → Elige la traducción correcta (ES).","options":["Ruede recto.","Ruede de frente.","Ruede y mantenga."],"correctIndex":1},
+      // 75
+      {"prompt":"\"Standing by to de-ice.\" → Elige la traducción correcta (ES).","options":["Listo para descongelación.","En espera para el deshielo.","En posición para derretimiento."],"correctIndex":1},
+      // 76
+      {"prompt":"\"Dewpoint minus 12 degrees.\" → Elige la traducción correcta (ES).","options":["Punto de rocío menos 12 grados.","Punto de engelación en 12 grados.","Punto de congelación 12 grados bajo cero."],"correctIndex":0},
+      // 77
+      {"prompt":"\"Acknowledge by rocking wings.\" → Elige la traducción correcta (ES).","options":["Confirme con alabeos.","Confirme moviendo timón de dirección.","Confirme moviendo el timón de profundidad."],"correctIndex":0},
+      // 78
+      {"prompt":"\"Give way to the Boeing 737 on your right, taxiing on taxiway Charlie.\" → Elige la traducción correcta (ES).","options":["Ceda paso a Boeing 737 a su derecha, rodando en la calle de rodaje Charlie.","Gire a la derecha para ceder el paso al Boeing 737 en calle de rodaje Charlie.","Continúe recto en calle de rodaje Charlie y espere al Boeing 737 a su derecha."],"correctIndex":0},
+      // 79
+      {"prompt":"\"Backtrack approved for runway 26\" → Elige la traducción correcta (ES).","options":["Regreso por pista 26 aprobado.","Retroceso por pista 26 aprobado.","Salida por pista 26 aprobada."],"correctIndex":0},
+      // 80
+      {"prompt":"\"Request air-taxiing from helipad.\" → Elige la traducción correcta (ES).","options":["Solicito rodaje aéreo desde helipuerto.","Solicito despegue desde helipuerto.","Requiero aterrizaje en helipuerto."],"correctIndex":0},
+      // 81
+      {"prompt":"\"Traffic in sight\" → Elige la traducción correcta (ES).","options":["Tránsito a la vista.","Tránsito despejado.","No tránsito a la vista."],"correctIndex":0},
+      // 82
+      {"prompt":"\"Will shortly lose identification.\" → Elige la traducción correcta (ES).","options":["La identificación se perderá pronto.","La identificación se perderá por un período corto de tiempo.","No habrá por un corto periodo de tiempo forma de comunicarse."],"correctIndex":0},
+
+      // 108
+      {"prompt":"\"Vuelo 234, ascienda y mantenga bloque entre FL270 y FL300.\" → Elige la traducción correcta (EN).","options":["Flight 234, ascend to keep a block level from FL270 to FL300.","Flight 234, climb to maintain block FL270 and FL300.","Flight 234, climb and hold a block altitude within FL270 to FL300."],"correctIndex":1},
+      // 109
+      {"prompt":"\"Vuelo suspendido hasta nuevo aviso.\" → Elige la traducción correcta (EN).","options":["Flight suspended until further notice.","Flight cancelled until further instructions.","Flight delayed until further notification."],"correctIndex":0},
+      // 110
+      {"prompt":"\"Detrás de Boeing 747 aterrizando en pista 27 autorizado a aterrizar.\" → Elige la traducción correcta (EN).","options":["Behind Boeing 747 landing runway 27 cleared to land.","After Boeing 747 touching down on runway 27 authorized to land.","Following Boeing 7.47's landing on runway 27 allowed to touch down."],"correctIndex":0},
+      // 111
+      {"prompt":"\"Iberia 123 posición a través de BUREX\" → Elige la traducción correcta (EN).","options":["Iberia 123 position abeam BUREX","Iberia 123 position across BUREX","Iberia 123 position: via BUREX"],"correctIndex":0},
+      // 112
+      {"prompt":"\"Interrumpa la transmisión de la altitud ADS-B indicación errónea.\" → Elige la traducción correcta (EN).","options":["Cease ADS-B altitude broadcast inaccurate indication.","Stop ADS-B altitude transmission wrong indication.","Halt ADS-B altitude reporting because of incorrect indication."],"correctIndex":1},
+      // 113
+      {"prompt":"\"Bravo 789, ignore el mensaje CPDLC de autorización de ascenso, interrupción mantenga FL260\" → Elige la traducción correcta (EN).","options":["Bravo 789, disregard CPDLC climb clearance message, break maintain FL 260.","Bravo 789, ignore CPDLC ascend clearance message, interrupt hold FL 260.","Bravo 789, neglect CPDLC climb authorization message, halt keep FL 260."],"correctIndex":0},
+      // 114
+      {"prompt":"\"Todos los virajes a régimen uno, inicie y termine todos los virajes cuando se lo indique con la palabra 'ahora'.\" → Elige la traducción correcta (EN).","options":["All turns at half rate, initiate and complete all turns when instructed with the word 'now'.","Make all turns rate one, start and stop all turns on the command 'now'.","All turns at full rate, begin and end all turns on the command 'now'."],"correctIndex":1},
+      // 115
+      {"prompt":"\"KLM456 Tráfico a las dos en punto, a siete millas al norte, en dirección opuesta, rápido.\" → Elige la traducción correcta (EN).","options":["KLM456 Traffic two o'clock, seven miles north, opposite course, rapid movement.","KLM456 Traffic at two o'clock, seven miles to the north, approaching from the opposite direction at high speed.","KLM456 Traffic two o'clock seven miles northbound, opposite direction, fast moving."],"correctIndex":2},
+      // 116
+      {"prompt":"\"Tráfico a las diez en punto a cinco millas al norte, desconocido, sobrepasando.\" → Elige la traducción correcta (EN).","options":["Traffic ten o'clock five miles northbound, unknown, overtaking.","Aircraft at ten o'clock, five miles to the north, unidentified, crossing.","Not recognized traffic ten o'clock, five miles north, closing."],"correctIndex":0},
+      // 117
+      {"prompt":"\"Entre en base izquierda pista 28, detrás del Airbus 330, notifique en final.\" → Elige la traducción correcta (EN).","options":["Turn left base runway 28, ahead of Airbus 330, notify on final.","Join left base runway 28, behind Airbus 330, report final.","Enter left traffic runway 28, following Airbus 330, report on base."],"correctIndex":1},
+      // 118
+      {"prompt":"\"Espere autorización de viraje izquierda.\" → Elige la traducción correcta (EN).","options":["Wait for left turn clearance.","Will advise later for left turn.","Await"],"correctIndex":1},
+      // 119
+      {"prompt":"\"Pista 27 agua estancada.\" → Elige la traducción correcta (EN).","options":["Runway 27 stagnant water.","Runway 27 standing water.","Runway 27 floodwaters."],"correctIndex":1},
+      // 120
+      {"prompt":"\"Solicito autorización para cruzar la Pista 22.\" → Elige la traducción correcta (EN).","options":["Ask for authorization to taxi across Runway 22.","Seek approval to cross on Runway 22.","Request clearance to cross Runway 22."],"correctIndex":2}
+    ];
+
+    const QUESTIONS = [...BASE_QUESTIONS, ...EXTRA_QUESTIONS];
+
+    // --- Utility: Fisher–Yates shuffle
+    function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];} return arr; }
+
+    // --- Simple tones via Web Audio API
+    const AudioFX = (()=>{
+      let ctx;
+      function tone(freq=440, dur=0.15, type='sine', gain=0.04){
+        try{ ctx = ctx || new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type=type; o.frequency.value=freq; g.gain.value=gain; o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+dur);
+      }
+      return { correct(){tone(880,0.12,'sine',0.06); setTimeout(()=>tone(1320,0.1,'sine',0.05),90);}, wrong(){tone(180,0.18,'square',0.06); setTimeout(()=>tone(140,0.18,'square',0.05),120);} }
+    })();
+
+    // State
+    let order=[], qIndex=0, score=0;
+    const elStart=document.getElementById('start'), elGame=document.getElementById('game'), elFinish=document.getElementById('finish');
+    const elPrompt=document.getElementById('prompt'), elOptions=document.getElementById('options'), elStatus=document.getElementById('status'), elScore=document.getElementById('score'), elBar=document.getElementById('bar');
+    const btnStart=document.getElementById('btnStart'), btnRetry=document.getElementById('btnRetry'), btnShuffle=document.getElementById('btnShuffle');
+    const finalIcon=document.getElementById('finalIcon'), finalTitle=document.getElementById('finalTitle'), finalMsg=document.getElementById('finalMsg');
+
+    function startGame(reshuffleAll=true){
+      const n=QUESTIONS.length;
+      order=[...Array(n).keys()]; if(reshuffleAll) shuffle(order);
+      qIndex=0; score=0; elScore.textContent=`Score ${score}`; updateStatus(); elBar.style.width='0%';
+      elStart.classList.add('hidden'); elFinish.classList.add('hidden'); elGame.classList.remove('hidden'); renderCurrent();
+    }
+    function updateStatus(){ elStatus.textContent=`Question ${qIndex+1}/${QUESTIONS.length}`; }
+    function renderCurrent(){
+      const q=QUESTIONS[order[qIndex]]; elPrompt.textContent=q.prompt;
+      const idxs=[0,1,2]; shuffle(idxs); elOptions.innerHTML='';
+      idxs.forEach((oi,pos)=>{ const b=document.createElement('button'); b.className='btn'; b.setAttribute('data-idx',oi); b.innerHTML=`<strong>${['a)','b)','c)'][pos]}</strong> ${q.options[oi]}`; b.onclick=()=>handleAnswer(oi); elOptions.appendChild(b); });
+      document.onkeydown=(e)=>{ if(['1','2','3'].includes(e.key)){ handleAnswer(idxs[Number(e.key)-1]); } };
+      document.getElementById('qa').classList.remove('fade-enter'); void elPrompt.offsetWidth; document.getElementById('qa').classList.add('fade-enter');
+    }
+    function handleAnswer(oi){
+      [...elOptions.children].forEach(b=>b.disabled=true);
+      const q=QUESTIONS[order[qIndex]]; const ok=(oi===q.correctIndex);
+      [...elOptions.children].forEach(b=>{ const idx=Number(b.getAttribute('data-idx')); if(idx===q.correctIndex)b.classList.add('correct'); if(idx===oi&&!ok)b.classList.add('wrong'); });
+      if(ok){ AudioFX.correct(); score++; elScore.textContent=`Score ${score}`; setTimeout(()=>{ qIndex++; elBar.style.width=`${(qIndex/QUESTIONS.length)*100}%`; if(qIndex>=QUESTIONS.length){ endGame(true); } else { updateStatus(); renderCurrent(); } },420); }
+      else { AudioFX.wrong(); setTimeout(()=>{ endGame(false); },500); }
+    }
+    function endGame(allCorrect){
+      elGame.classList.add('hidden'); elFinish.classList.remove('hidden');
+      if(allCorrect){ finalIcon.textContent='🏁'; finalTitle.textContent='¡Perfecto!'; finalMsg.textContent=`Has completado ${QUESTIONS.length}/${QUESTIONS.length} correctamente.`; }
+      else { finalIcon.textContent='🔁'; finalTitle.textContent='Respuesta incorrecta'; finalMsg.textContent='El quiz se reinicia con TODAS las preguntas barajadas. ¡Inténtalo de nuevo!'; }
+    }
+    btnStart.addEventListener('click',()=>startGame(true));
+    document.getElementById('btnRetry').addEventListener('click',()=>startGame(false));
+    document.getElementById('btnShuffle').addEventListener('click',()=>startGame(true));
+  </script>
+</body>
+</html>
